@@ -30,6 +30,7 @@
 #include "llvm/IR/LLVMContext.h"
 
 #include <numeric>
+#include <stdio.h>
 
 using namespace glow;
 
@@ -62,6 +63,9 @@ bool CPUBackend::isOpSupported(const NodeInfo &NI) const {
   case Kinded::Kind::CPUConvDKKC8NodeKind:
     return NI.allInputsAndOutputsHaveSameElemKind({ElemKind::FloatTy});
 
+  case Kinded::Kind::MaltempiConvNodeKind:
+    return NI.allInputsAndOutputsHaveSameElemKind({ElemKind::FloatTy});
+
   // Delegate everything else to the LLVM backend.
   default:
     return LLVMBackend::isOpSupported(NI);
@@ -87,6 +91,10 @@ bool CPUBackend::supportsFusedActivation(Node *parent, Node *activation) const {
   // ChannelwiseQuantizedConvolution.
   if (!llvm::isa<ConvolutionNode>(parent) &&
       !llvm::isa<ChannelwiseQuantizedConvolutionNode>(parent)) {
+    return false;
+  }
+
+  if (MO436Features) {
     return false;
   }
 

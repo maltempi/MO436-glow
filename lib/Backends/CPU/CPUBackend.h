@@ -24,9 +24,11 @@
 
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/IR/IRBuilder.h"
-
 #include <vector>
 
+// MO436
+#include "glow/LLVMIRCodeGen/CommandLine.h"
+  
 namespace glow {
 
 class NodeInfo;

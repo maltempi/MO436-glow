@@ -34,3 +34,15 @@ Error ONNXModelWriter::writeCPUConvDKKC8(const CPUConvDKKC8Node *node,
 
   return writeAllWithNode("CPUConvDKKC8", node, graph, proto);
 }
+
+Error ONNXModelWriter::writeMaltempiConv(const MaltempiConvNode *node,
+                                         GraphType &graph) {
+  auto *proto = graph.add_node();
+  // Add dictionary entries.
+  addValueAttribute(proto, "kernel_shape", node->getKernels());
+  addValueAttribute(proto, "strides", node->getStrides());
+  addValueAttribute(proto, "pads", node->getPads());
+  addValueAttribute(proto, "group", node->getGroup());
+
+  return writeAllWithNode("MaltempiConv", node, graph, proto);
+}

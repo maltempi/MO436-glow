@@ -80,6 +80,9 @@ extern llvm::cl::opt<glow::BundleApiType> bundleAPI;
 /// Option to print more details in the bundle API.
 extern llvm::cl::opt<bool> bundleAPIVerbose;
 
+/// Option to print more details in the bundle API.
+extern llvm::cl::opt<bool> MO436Features;
+
 /// Option to add other external object files to the bundle.
 extern llvm::cl::list<std::string> bundleObjectsOpt;
 

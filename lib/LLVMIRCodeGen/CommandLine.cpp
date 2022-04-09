@@ -119,6 +119,11 @@ llvm::cl::opt<bool> bundleAPIVerbose(
     llvm::cl::desc("Print more details in the bundle API header file"),
     llvm::cl::init(false), llvm::cl::cat(bundleSaverCat));
 
+llvm::cl::opt<bool> MO436Features(
+    "MO436-features",
+    llvm::cl::desc("Print more details in the bundle API header file"),
+    llvm::cl::init(false), llvm::cl::cat(bundleSaverCat));
+
 llvm::cl::list<std::string> bundleObjectsOpt(
     "bundle-objects",
     llvm::cl::desc("Comma separated list of names of other object files which "

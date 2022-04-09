@@ -30,4 +30,13 @@ bool CPUConvDKKC8Node::verify() const {
   return expectCompareTrue("Invalid output dimensions", exp, odim, this);
 }
 
+bool MaltempiConvNode::verify() const {
+  ShapeNHWC idim(getInput().getType()->dims());
+  ShapeNHWC odim(getResult().getType()->dims());
+  auto outSz = calculateConvPoolOutputDims(idim.h, idim.w, getKernels(),
+                                           getStrides(), getPads());
+  ShapeNHWC exp(idim.n, outSz.first, outSz.second, getBias().dims()[0]);
+  return expectCompareTrue("Invalid output dimensions", exp, odim, this);
+}
+
 #endif // GLOW_WITH_CPU
