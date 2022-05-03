@@ -121,7 +121,7 @@ llvm::cl::opt<bool> bundleAPIVerbose(
 
 llvm::cl::opt<bool> MO436Features(
     "MO436-features",
-    llvm::cl::desc("Print more details in the bundle API header file"),
+    llvm::cl::desc("Enable MO436 features (naive convolution implementation)"),
     llvm::cl::init(false), llvm::cl::cat(bundleSaverCat));
 
 llvm::cl::list<std::string> bundleObjectsOpt(

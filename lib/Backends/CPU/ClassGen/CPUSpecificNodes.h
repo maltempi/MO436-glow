@@ -40,10 +40,8 @@ BB.newBackendSpecificNode("MaltempiConv")
     .addMember(MemberType::VectorUnsigned, "Kernels")
     .addMember(MemberType::VectorUnsigned, "Strides")
     .addMember(MemberType::VectorUnsigned, "Pads")
-    .addMember(MemberType::Unsigned, "Group")
     .addResultFromCtorArg()
-    .setDocstring("This is a cpu-specific convolution implementation where the "
-                  "filter is transposed to the shape [D/8, K, K, C, 8]");
+    .setDocstring("This is a naive convolution implementation for MO436 studies only.");
 
 BB.includeBackendSpecificVerification("glow/CPUSpecificNodesVerification.h");
 
