@@ -336,8 +336,8 @@ void libjit_naiveConvMO436_f(float *outW, const float *inW, const float *filterW
               {
                 for (size_t filterX = 0; filterX < filterWidth; filterX++)
                 {
-                  auto inX = outI * stride - padLeft + filterX;
-                  auto inY = outJ * stride - padTop + filterY;
+                  auto inX = outI * stride - padTop + filterX;
+                  auto inY = outJ * stride - padLeft + filterY;
 
                   // ignore if indexes are out of boundaries
                   if (inX < 0 || inY < 0 || inX >= (sdim_t)inWdims[1] || inY >= (sdim_t)inWdims[2])
@@ -492,7 +492,7 @@ void libjit_gemmConvMO436_f(float *outW, const float *inW, const float *filterW,
     dim_t strideWidth = strides[1];
 
     dim_t padTop = pads[0];
-    dim_t padLeft = pads[1]
+    dim_t padLeft = pads[1];
     dim_t padBottom = pads[2];
     dim_t padRight = pads[3];
 
@@ -501,8 +501,8 @@ void libjit_gemmConvMO436_f(float *outW, const float *inW, const float *filterW,
 
     dim_t groups = 1;
 
-    int imColRows = filterHeight * filterWidth * inputChannels;
-    int imColColumns = outputHeight * outputWidth;
+    int imColRows = outputHeight * outputWidth;
+    int imColColumns = filterHeight * filterWidth * inputChannels;
     int size = imColRows * imColColumns;
 
     libjit_conv_init_output_with_bias(0, outW, biasW, outWdims, biasWdims);
@@ -532,7 +532,7 @@ void libjit_gemmConvMO436_f(float *outW, const float *inW, const float *filterW,
     float alpha = 1.0;
     float beta = 1.0;
 
-    int M = imColColumns;
+    int M = imColRows;
     int N = numberOfFilters;
     int K = filterHeight * filterWidth * inputChannels;
 
