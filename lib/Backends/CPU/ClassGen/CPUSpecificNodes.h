@@ -41,7 +41,7 @@ BB.newBackendSpecificNode("MaltempiConv")
     .addMember(MemberType::VectorUnsigned, "Strides")
     .addMember(MemberType::VectorUnsigned, "Pads")
     .addResultFromCtorArg()
-    .setDocstring("This is a naive convolution implementation for MO436 studies only.");
+    .setDocstring("MO436 convolution implementations (see CommandLine.cpp flags to enable them).");
 
 BB.includeBackendSpecificVerification("glow/CPUSpecificNodesVerification.h");
 

@@ -19,10 +19,10 @@
 #include "glow/IR/Instrs.h"
 #include "glow/LLVMIRCodeGen/LLVMBackend.h"
 #include "glow/Quantization/Base/Base.h"
+#include "glow/LLVMIRCodeGen/CommandLine.h"
 
 using namespace glow;
 using llvm::cast;
-
 CPULLVMIRGen::CPULLVMIRGen(const IRFunction *F,
                            AllocationsInfo &allocationsInfo,
                            std::string mainEntryName, llvm::StringRef libjitBC)
@@ -136,7 +136,7 @@ case Kinded::Kind::MaltempiConvInstKind: {
     auto *strides = emitConstDimTArray(builder, CI->getStrides());
     auto *pads = emitConstDimTArray(builder, CI->getPads());
 
-    const char *kernelName = "maltempiConv";
+    const char *kernelName = naiveConvolution ? "naiveConvMO436" : "gemmConvMO436";
     auto *F = getFunction(kernelName, dest->getElementType());
 
     createCall(builder, F,

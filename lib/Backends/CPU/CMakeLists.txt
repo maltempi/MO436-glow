@@ -75,7 +75,8 @@ target_link_libraries(CPUBackend
                         GraphOptimizerPipeline
                         QuantizationBase
                         Runtime
-                        LLVMIRCodeGen)
+                        LLVMIRCodeGen
+                        -lopenblas)
 
 add_dependencies(CPUBackend libjit_cpu_TARGET)
 

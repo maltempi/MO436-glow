@@ -121,7 +121,12 @@ llvm::cl::opt<bool> bundleAPIVerbose(
 
 llvm::cl::opt<bool> MO436Features(
     "MO436-features",
-    llvm::cl::desc("Enable MO436 features (naive convolution implementation)"),
+    llvm::cl::desc("Enable MO436 features"),
+    llvm::cl::init(false), llvm::cl::cat(bundleSaverCat));
+
+llvm::cl::opt<bool> naiveConvolution(
+    "naive-conv",
+    llvm::cl::desc("If true uses MO436 naive convolution otherwise uses GEMM (with cblas). This flag works only if MO436Features flag is true."),
     llvm::cl::init(false), llvm::cl::cat(bundleSaverCat));
 
 llvm::cl::list<std::string> bundleObjectsOpt(

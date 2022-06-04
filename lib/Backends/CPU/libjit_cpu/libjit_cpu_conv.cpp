@@ -21,10 +21,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <cblas.h>
 
 #include "../../../LLVMIRCodeGen/libjit/libjit_defs.h"
 
 namespace {
+
 // Initialize the convolution output frame for slice \p N with the bias \p
 // biasW.
 void libjit_conv_init_output_with_bias(dim_t N, float *outW, const float *biasW,
@@ -297,7 +299,7 @@ void libjit_convDKKC8_f(float *outW, const float *inW, const float *filterW,
   }     // For each N, the sample in the batch.
 }
 
-  void libjit_maltempiConv_f(float *outW, const float *inW, const float *filterW,
+void libjit_naiveConvMO436_f(float *outW, const float *inW, const float *filterW,
                              const float *biasW, const dim_t *outWdims,
                              const dim_t *inWdims, const dim_t *filterWdims,
                              const dim_t *biasWdims, const dim_t *strides, const dim_t *pads)
@@ -313,7 +315,8 @@ void libjit_convDKKC8_f(float *outW, const float *inW, const float *filterW,
     dim_t outputWidth = outWdims[2];
 
     dim_t stride = strides[0];
-    dim_t pad = pads[0];
+    dim_t padTop = pads[0];
+    dim_t padLeft = pads[1];
 
     for (int inputNum = 0; inputNum < numberOfInputs; inputNum++)
     {
@@ -333,8 +336,8 @@ void libjit_convDKKC8_f(float *outW, const float *inW, const float *filterW,
               {
                 for (size_t filterX = 0; filterX < filterWidth; filterX++)
                 {
-                  auto inX = outI * stride - pad + filterX;
-                  auto inY = outJ * stride - pad + filterY;
+                  auto inX = outI * stride - padLeft + filterX;
+                  auto inY = outJ * stride - padTop + filterY;
 
                   // ignore if indexes are out of boundaries
                   if (inX < 0 || inY < 0 || inX >= (sdim_t)inWdims[1] || inY >= (sdim_t)inWdims[2])
@@ -359,6 +362,198 @@ void libjit_convDKKC8_f(float *outW, const float *inW, const float *filterW,
           } // Output Width
         }   // Output Height
       }     // Filter #
-    }       // Input #
-  }
+  }       // Input #
+}
+
+/**
+ * This method was modified/adapted from Caffe2 Im2ColNHWC source code.
+ * https://github.com/pytorch/pytorch/blob/7e4730d017e3da94fe3b7b5f504df0563516367f/caffe2/quantization/server/im2col_dnnlowp.h#L186
+ * 
+ * Copyright (c) 2016-present, Facebook Inc. All rights reserved.
+ *
+ * All contributions by Facebook:
+ * Copyright (c) 2016 Facebook Inc.
+ * 
+ * All contributions by Google:
+ * Copyright (c) 2015 Google Inc.
+ * All rights reserved.
+ * 
+ * All contributions by Yangqing Jia:
+ * Copyright (c) 2015 Yangqing Jia
+ * All rights reserved.
+ * 
+ * All contributions by Kakao Brain:
+ * Copyright 2019-2020 Kakao Brain
+ * 
+ * All contributions by Cruise LLC:
+ * Copyright (c) 2022 Cruise LLC.
+ * All rights reserved.
+ * 
+ * All contributions from Caffe:
+ * Copyright(c) 2013, 2014, 2015, the respective contributors
+ * All rights reserved.
+ * 
+ * All other contributions:
+ * Copyright(c) 2015, 2016 the respective contributors
+ * All rights reserved.
+ * 
+ * Caffe2 uses a copyright model similar to Caffe: each contributor holds
+ * copyright over their contributions to Caffe2. The project versioning records
+ * all such contribution and copyright details. If a contributor wants to further
+ * mark their specific copyright on a particular contribution, they should
+ * indicate their copyright solely in the commit message of the change when it is
+ * committed.
+ * 
+ * All rights reserved.
+ * 
+ * LICENSE: https://raw.githubusercontent.com/pytorch/pytorch/7e4730d017e3da94fe3b7b5f504df0563516367f/LICENSE
+ */
+static void Im2ColNHWC(
+    const int channels,
+    const int height,
+    const int width,
+    const int kernel_h,
+    const int kernel_w,
+    const int dilation_h,
+    const int dilation_w,
+    const int pad_t,
+    const int pad_l,
+    const int pad_b,
+    const int pad_r,
+    const int stride_h,
+    const int stride_w,
+    const float* data_im,
+    float* data_col,
+    const int groups,
+    const float& zero_point)
+{
+  const int dkernel_h = dilation_h * (kernel_h - 1) + 1;
+  const int dkernel_w = dilation_w * (kernel_w - 1) + 1;
+
+  int height_col = (height + pad_t + pad_b - dkernel_h) / stride_h + 1;
+  int width_col = (width + pad_l + pad_r - dkernel_w) / stride_w + 1;
+
+  for (int h = 0; h < height_col; ++h) {
+    int h_pad = -pad_t + h * stride_h;
+    float* data_col_temp =
+        data_col + h * width_col * kernel_h * kernel_w * channels;
+    int w_pad = -pad_l;
+    for (int w = 0 ; w < width_col; w++) {
+      int r = 0;
+      for (int ih = h_pad; ih < h_pad + dkernel_h; ih += dilation_h, ++r) {
+        int s = 0;
+        for (int iw = w_pad; iw < w_pad + dkernel_w; iw += dilation_w, ++s) {
+          if (ih >= 0 && ih < height && iw >= 0 && iw < width) {
+            for (int g = 0 ; g < groups ; g++) {
+              memcpy(
+                  data_col_temp +
+                      ((g * kernel_h + r) * kernel_w + s) * (channels / groups),
+                  data_im + (ih * width + iw) * channels +
+                      g * (channels / groups),
+                  sizeof(float) * (channels / groups));
+            }
+          } else {
+            // This should be simply padded with zero.
+            for (int g = 0 ; g < groups; g++) {
+              for (int i = 0; i < channels / groups; ++i) {
+                data_col_temp
+                    [(((g * kernel_h + r) * kernel_w) + s) *
+                         (channels / groups) +
+                     i] = zero_point;
+              }
+            }
+          }
+        } // for each iw
+      } // for each ih
+      data_col_temp += kernel_h * kernel_w * channels;
+      w_pad += stride_w;
+    } // for each output pixel
+  } // for each image row
+}
+
+
+void libjit_gemmConvMO436_f(float *outW, const float *inW, const float *filterW,
+                           const float *biasW, const dim_t *outWdims,
+                           const dim_t *inWdims, const dim_t *filterWdims,
+                           const dim_t *biasWdims, const dim_t *strides, const dim_t *pads)
+{
+    dim_t numberOfFilters = filterWdims[0];
+    dim_t filterHeight = filterWdims[1];
+    dim_t filterWidth = filterWdims[2];
+
+    dim_t inputHeight = inWdims[1];
+    dim_t inputWidth = inWdims[2];
+    dim_t inputChannels = inWdims[3];
+
+    dim_t outputHeight = outWdims[1];
+    dim_t outputWidth = outWdims[2];
+
+    dim_t strideHeight = strides[0];
+    dim_t strideWidth = strides[1];
+
+    dim_t padTop = pads[0];
+    dim_t padLeft = pads[1]
+    dim_t padBottom = pads[2];
+    dim_t padRight = pads[3];
+
+    dim_t dilationHeight = 1;
+    dim_t dilationWidth = 1;
+
+    dim_t groups = 1;
+
+    int imColRows = filterHeight * filterWidth * inputChannels;
+    int imColColumns = outputHeight * outputWidth;
+    int size = imColRows * imColColumns;
+
+    libjit_conv_init_output_with_bias(0, outW, biasW, outWdims, biasWdims);
+
+    float *imgCol = (float *)malloc(size* sizeof(float));
+
+    Im2ColNHWC(
+        inputChannels,
+        inputHeight,
+        inputWidth,
+        filterHeight,
+        filterWidth,
+        dilationHeight,
+        dilationWidth,
+        padTop,
+        padLeft,
+        padBottom,
+        padRight,
+        strideHeight,
+        strideWidth,
+        inW,
+        imgCol,
+        groups,
+        0 // zero_point
+    );
+
+    float alpha = 1.0;
+    float beta = 1.0;
+
+    int M = imColColumns;
+    int N = numberOfFilters;
+    int K = filterHeight * filterWidth * inputChannels;
+
+    int lda = K;
+    int ldb = K;
+    int ldc = N;
+
+    cblas_sgemm(
+        CblasRowMajor,
+        CblasNoTrans,
+        CblasTrans,
+        M, N, K,
+        alpha,
+        imgCol, // A
+        lda,
+        filterW, // B
+        ldb,
+        beta,
+        outW, ldc);
+
+    free(imgCol);
+}
+
 } // extern "C"
