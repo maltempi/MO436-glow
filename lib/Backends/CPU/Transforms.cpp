@@ -103,6 +103,10 @@ static Node *useMaltempiConv(ConvolutionNode *CN, Function *F) {
     return nullptr;
   }
 
+  if (CN->getGroup() != 1) {
+    return nullptr;
+  }
+  
   // Fused activation is not supported.
   if (CN->hasFusedActivation()) {
     return nullptr;

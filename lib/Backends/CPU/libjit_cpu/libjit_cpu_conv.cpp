@@ -493,8 +493,8 @@ void libjit_gemmConvMO436_f(float *outW, const float *inW, const float *filterW,
 
     dim_t padTop = pads[0];
     dim_t padLeft = pads[1];
-    dim_t padBottom = pads[2];
-    dim_t padRight = pads[3];
+    dim_t padBottom = pads[3];
+    dim_t padRight = pads[2];
 
     dim_t dilationHeight = 1;
     dim_t dilationWidth = 1;
